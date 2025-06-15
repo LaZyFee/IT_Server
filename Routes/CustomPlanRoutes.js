@@ -8,17 +8,16 @@ import {
 
 const router = express.Router();
 
-// POST - Create custom plan
-router.post("/:id", createCustomPlan);
-
-// GET - Admin fetches all custom plan requests
+// 1️⃣ Get all custom plans (admin)
 router.get("/", getAllCustomPlans);
 
-// PATCH - Admin updates status of a custom plan (approve/reject)
+// 2️⃣ Update custom plan status (admin)
 router.patch("/:id/status", updateCustomPlanStatus);
 
-// GET - User fetches their custom plans
-router.get("/:id", getUserCustomPlans);
+// 3️⃣ Get custom plans by user
+router.get("/user/:id", getUserCustomPlans);
 
+// 4️⃣ Create custom plan
+router.post("/:id", createCustomPlan);
 
 export default router;

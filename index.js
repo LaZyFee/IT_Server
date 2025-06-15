@@ -18,8 +18,9 @@ import contactRoutes from "./Routes/ContactRoutes.js";
 const port = process.env.PORT || 3001;
 const app = express();
 
-app.use(cors("*"));
+app.use(cors());
 app.use('/api/payment/webhook', bodyParser.raw({ type: 'application/json' }));
+
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
