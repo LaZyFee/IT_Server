@@ -6,16 +6,10 @@ import { CustomPlan } from "../Models/CustomPlanModel.js";
 dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 const stripeWebhook = async (req, res) => {
   console.log("ENTERED INTO WEBHOOK");
-  
-  // Add debug logging
-  console.log("Headers:", req.headers);
-  console.log("Body type:", typeof req.body);
-  console.log("Body length:", req.body ? req.body.length : 'undefined');
 
   const sig = req.headers["stripe-signature"];
 
@@ -30,34 +24,64 @@ const stripeWebhook = async (req, res) => {
   }
 
   let event;
+  let body;
 
   try {
-    // Ensure we're using the raw body
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    // Handle different body types - Vercel may parse JSON automatically
+    if (typeof req.body === 'string') {
+      body = req.body;
+    } else if (Buffer.isBuffer(req.body)) {
+      body = req.body;
+    } else if (typeof req.body === 'object') {
+      // Vercel parsed it as JSON - convert back to string
+      body = JSON.stringify(req.body);
+      console.log("⚠ Body was parsed as JSON, converting back to string");
+    } else {
+      throw new Error("Unexpected body type: " + typeof req.body);
+    }
+
+    console.log("Body type after processing:", typeof body);
+    console.log("Body length after processing:", body.length);
+
+    // Verify the webhook signature
+    event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
     console.log("✅ Webhook signature verified successfully");
   } catch (err) {
     console.error("❌ Webhook signature failed.", err.message);
-    console.error("Full error:", err);
+    console.error("Body type:", typeof req.body);
+    console.error("Body sample:", typeof req.body === 'string' ? req.body.substring(0, 100) : JSON.stringify(req.body).substring(0, 100));
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   console.log("Event type:", event.type);
 
-  // Handle payment success
-  if (event.type === "payment_intent.succeeded") {
-    const paymentIntent = event.data.object;
+  try {
+    // Handle payment success - both charge.succeeded and payment_intent.succeeded
+    if (event.type === "payment_intent.succeeded" || event.type === "charge.succeeded") {
+      let paymentData;
 
-    console.log("✅ PaymentIntent succeeded.", paymentIntent.id);
+      if (event.type === "payment_intent.succeeded") {
+        paymentData = event.data.object;
+      } else if (event.type === "charge.succeeded") {
+        // For charge.succeeded, get the payment intent ID and fetch it
+        const charge = event.data.object;
+        paymentData = {
+          id: charge.payment_intent,
+          metadata: charge.metadata,
+          amount: charge.amount
+        };
+      }
 
-    try {
-      const serviceId = paymentIntent?.metadata?.serviceId;
-      const planId = paymentIntent?.metadata?.planId;
-      const userId = paymentIntent?.metadata?.userId;
-      const amount = parseFloat(paymentIntent?.metadata?.amount);
-      const planName = paymentIntent?.metadata?.planName;
-      const serviceName = paymentIntent?.metadata?.serviceName;
-      const planDescription = paymentIntent?.metadata?.planDescription;
-      const customPlanId = paymentIntent?.metadata?.customPlanId;
+      console.log("✅ Payment succeeded.", paymentData.id);
+
+      const serviceId = paymentData?.metadata?.serviceId;
+      const planId = paymentData?.metadata?.planId;
+      const userId = paymentData?.metadata?.userId;
+      const amount = parseFloat(paymentData?.metadata?.amount || (paymentData.amount / 100));
+      const planName = paymentData?.metadata?.planName;
+      const serviceName = paymentData?.metadata?.serviceName;
+      const planDescription = paymentData?.metadata?.planDescription;
+      const customPlanId = paymentData?.metadata?.customPlanId;
 
       // Create order after successful payment
       const newOrder = new Order({
@@ -65,8 +89,8 @@ const stripeWebhook = async (req, res) => {
         service: serviceId || null,
         plan: planId || null,
         price: amount,
-        description: `Payment for plan under service`,
-        stripePaymentIntentId: paymentIntent.id,
+        description: `Payment for ${planName} under ${serviceName}`,
+        stripePaymentIntentId: paymentData.id,
         paymentStatus: "succeeded",
         status: "completed",
         planName,
@@ -80,17 +104,15 @@ const stripeWebhook = async (req, res) => {
         await CustomPlan.findByIdAndUpdate(customPlanId, {
           paymentStatus: "paid",
         });
-        console.log(
-          `✅ CustomPlan ${customPlanId} paymentStatus updated to paid.`
-        );
+        console.log(`✅ CustomPlan ${customPlanId} paymentStatus updated to paid.`);
       }
 
-      console.log("✅ Order successfully created.", newOrder);
-    } catch (dbError) {
-      console.error("❌ Database error:", dbError);
-      // Don't return error to Stripe - we've already verified the webhook
-      // Log the error but acknowledge receipt
+      console.log("✅ Order successfully created:", newOrder._id);
     }
+  } catch (dbError) {
+    console.error("❌ Database error:", dbError);
+    // Don't return error to Stripe - we've already verified the webhook
+    // Log the error but acknowledge receipt
   }
 
   res.status(200).json({ received: true });
