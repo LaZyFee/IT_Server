@@ -7,7 +7,7 @@ import {
     deleteUser,
     makeAdmin,
     removeAdmin
-} from '../controllers/UserController.js';
+} from '../Controllers/UserController.js';
 
 const userRoute = express.Router();
 
