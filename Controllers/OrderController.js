@@ -56,8 +56,8 @@ const getUserOrders = async (req, res) => {
     const allOrders = await Order.find({ user: userId })
       .populate("plan", "title")
       .populate("service", "title")
-      .populate("user", "name email"); // optional, if you want user info
-
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
     // Map orders to include planName, serviceName, description properly
     const formattedOrders = allOrders.map(order => {
       return {
@@ -88,7 +88,8 @@ const getAllOrders = async (req, res) => {
     const orders = await Order.find()
       .populate("user", "name email")
       .populate("plan", "title")
-      .populate("service", "title");
+      .populate("service", "title")
+      .sort({ createdAt: -1 });
 
     const formattedOrders = orders.map(order => ({
       _id: order._id,
@@ -139,10 +140,10 @@ const deleteOrder = async (req, res) => {
   }
 };
 
-export { 
-  getOrderByPaymentIntent, 
-  getUserOrders, 
-  getAllOrders, 
+export {
+  getOrderByPaymentIntent,
+  getUserOrders,
+  getAllOrders,
   updateOrderStatus,
-  deleteOrder 
+  deleteOrder
 };
