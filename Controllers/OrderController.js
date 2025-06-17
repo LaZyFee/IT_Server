@@ -31,22 +31,27 @@ const getOrderByPaymentIntent = async (req, res) => {
       // Regular plan
       responseOrder.plan = order.plan;
       responseOrder.service = order.service;
-      responseOrder.description = order.description || order.planDescription || "";
+      responseOrder.description =
+        order.description || order.planDescription || "";
       responseOrder.planName = order.plan.title || order.planName || "";
-      responseOrder.serviceName = order.service.title || order.serviceName || "";
+      responseOrder.serviceName =
+        order.service.title || order.serviceName || "";
     } else {
       // Custom plan
       responseOrder.plan = null;
       responseOrder.service = null;
       responseOrder.planName = order.planName || "custom plan";
       responseOrder.serviceName = order.serviceName || "";
-      responseOrder.description = order.planDescription || order.description || "";
+      responseOrder.description =
+        order.planDescription || order.description || "";
     }
 
     return res.status(200).json({ order: responseOrder });
   } catch (error) {
     console.error("Error in getOrderByPaymentIntent:", error);
-    return res.status(500).json({ message: error.message || "Something went wrong" });
+    return res
+      .status(500)
+      .json({ message: error.message || "Something went wrong" });
   }
 };
 
@@ -58,8 +63,9 @@ const getUserOrders = async (req, res) => {
       .populate("service", "title")
       .populate("user", "name email")
       .sort({ createdAt: -1 });
+
     // Map orders to include planName, serviceName, description properly
-    const formattedOrders = allOrders.map(order => {
+    const formattedOrders = allOrders.map((order) => {
       return {
         _id: order._id,
         user: order.user,
@@ -70,8 +76,12 @@ const getUserOrders = async (req, res) => {
         updatedAt: order.updatedAt,
         plan: order.plan || null,
         service: order.service || null,
-        planName: order.plan ? order.plan.title : order.planName || "custom plan",
-        serviceName: order.service ? order.service.title : order.serviceName || "",
+        planName: order.plan
+          ? order.plan.title
+          : order.planName || "custom plan",
+        serviceName: order.service
+          ? order.service.title
+          : order.serviceName || "",
         description: order.description || order.planDescription || "",
         stripePaymentIntentId: order.stripePaymentIntentId,
       };
@@ -91,7 +101,7 @@ const getAllOrders = async (req, res) => {
       .populate("service", "title")
       .sort({ createdAt: -1 });
 
-    const formattedOrders = orders.map(order => ({
+    const formattedOrders = orders.map((order) => ({
       _id: order._id,
       user: order.user,
       price: order.price,
@@ -102,7 +112,9 @@ const getAllOrders = async (req, res) => {
       plan: order.plan || null,
       service: order.service || null,
       planName: order.plan ? order.plan.title : order.planName || "custom plan",
-      serviceName: order.service ? order.service.title : order.serviceName || "",
+      serviceName: order.service
+        ? order.service.title
+        : order.serviceName || "",
       description: order.description || order.planDescription || "",
       stripePaymentIntentId: order.stripePaymentIntentId,
     }));
@@ -145,5 +157,5 @@ export {
   getUserOrders,
   getAllOrders,
   updateOrderStatus,
-  deleteOrder
+  deleteOrder,
 };

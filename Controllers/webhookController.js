@@ -11,7 +11,7 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const stripeWebhook = async (req, res) => {
   console.log("ENTERED INTO WEBHOOK");
   console.log("Platform: Render/Production");
-
+  
   const sig = req.headers["stripe-signature"];
 
   if (!sig) {
@@ -60,12 +60,12 @@ const stripeWebhook = async (req, res) => {
   } catch (err) {
     console.error("❌ Webhook signature failed:", err.message);
     console.error("Headers:", JSON.stringify(req.headers, null, 2));
-    console.error("Body sample:",
-      typeof req.body === 'string'
-        ? req.body.substring(0, 200)
+    console.error("Body sample:", 
+      typeof req.body === 'string' 
+        ? req.body.substring(0, 200) 
         : Buffer.isBuffer(req.body)
-          ? req.body.toString().substring(0, 200)
-          : JSON.stringify(req.body).substring(0, 200)
+        ? req.body.toString().substring(0, 200)
+        : JSON.stringify(req.body).substring(0, 200)
     );
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
@@ -114,7 +114,7 @@ const stripeWebhook = async (req, res) => {
       // Handle charge.succeeded as backup
       const charge = event.data.object;
       console.log("✅ Charge succeeded:", charge.id);
-
+      
       // Similar processing logic as above...
       // You can add this if needed
     }
